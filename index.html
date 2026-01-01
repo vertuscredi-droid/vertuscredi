@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERTUSCREDI - Gestão e Simulação</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-slate-100 font-sans text-slate-900">
+
+<div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-900">
+<div class="bg-white p-8 rounded-2xl shadow-2xl w-80 text-center border-t-4 border-blue-600">
+<h2 class="text-xl font-black mb-6 uppercase tracking-widest text-slate-700">Painel VertusCredi</h2>
+<input type="password" id="pass" class="w-full p-3 border rounded-lg mb-4 text-center outline-none" placeholder="Senha">
+<button onclick="login()" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition">ENTRAR</button>
+</div>
+</div>
+
+<div id="admin-panel" class="hidden">
+<nav class="bg-white border-b p-4 flex justify-between items-center px-8 shadow-sm sticky top-0 z-50">
+<div class="flex items-center gap-6">
+<span class="text-xl font-bold text-blue-700 tracking-tighter italic uppercase">VERTUSCREDI</span>
+<div class="flex gap-4 text-sm font-medium text-gray-400 font-bold">
+<button onclick="switchTab('home')" class="hover:text-blue-700 transition">Empréstimos</button>
+<button onclick="switchTab('custos')" class="hover:text-blue-700 transition">Custos / Saídas</button>
+</div>
+</div>
+<button onclick="location.reload()" class="text-red-500 font-bold text-[10px] bg-red-50 px-3 py-1 rounded">SAIR</button>
+</nav>
+
+<div class="p-6 max-w-7xl mx-auto">
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-center font-bold">
+<div class="bg-blue-800 p-5 rounded-xl text-white shadow-lg">
+<div class="flex justify-between items-center mb-1 text-[10px] uppercase opacity-70 italic italic">
+<span>Saldo Geral Sistema</span>
+<div class="flex gap-1">
+<button onclick="ajustarSaldoSistema()" class="bg-blue-600 px-1 rounded">Ajustar</button>
+<button onclick="zerarSaldoSistema()" class="bg-red-500 px-1 rounded">Zerar</button>
+</div>
+</div>
+<h3 id="display-saldo-sistema" class="text-2xl font-black italic">R$ 0,00</h3>
+</div>
+
+<div class="bg-white p-5 rounded-xl border shadow-sm border-b-4 border-blue-500">
+<div class="flex justify-between items-center mb-1 text-[10px] uppercase text-gray-400 italic">
+<span>Caixa Físico</span>
+<div>
+<button onclick="editarSaldoCaixa()" class="text-blue-600 underline">Ajustar</button>
+<button onclick="zerarSaldoCaixa()" class="text-red-500 underline ml-1">Zerar</button>
+</div>
+</div>
+<h3 id="display-saldo-caixa" class="text-2xl font-black italic">R$ 0,00</h3>
+</div>
+
+<div class="bg-white p-5 rounded-xl border shadow-sm border-l-4 border-red-500">
+<div class="flex justify-between items-center mb-1 text-[10px] uppercase text-red-500 italic">
+<span>Saídas Operacionais</span>
+<div>
+<button onclick="ajustarTotalSaidas()" class="text-gray-400 border px-1">Ajustar</button>
+<button onclick="zerarTotalSaidas()" class="text-red-600 border px-1">Zerar</button>
+</div>
+</div>
+<h3 id="display-total-saidas" class="text-2xl font-black italic text-red-600">R$ 0,00</h3>
+</div>
+</div>
+
+<div id="tab-home" class="tab-content grid grid-cols-1 lg:grid-cols-4 gap-6">
+<div class="bg-white p-6 rounded-xl border shadow-sm h-fit">
+<h2 class="font-bold mb-4 text-xs text-blue-700 uppercase border-b pb-2 tracking-widest italic">Novo Empréstimo</h2>
+<div class="space-y-3">
+<input type="text" id="emp-cliente" placeholder="NOME DO CLIENTE" class="w-full p-2 border rounded text-sm uppercase font-bold outline-none">
+<div class="grid grid-cols-2 gap-2">
+<input type="number" id="emp-valor" placeholder="VALOR R$" class="w-full p-2 border rounded text-sm font-bold outline-none">
+<input type="number" id="emp-juros" value="20" class="p-2 border rounded text-sm font-bold text-blue-600">
+</div>
+<select id="emp-criado" class="w-full p-2 border rounded text-sm bg-gray-50 font-bold">
+<option value="Jacson">Jacson</option>
+<option value="Rafael">Rafael</option>
+</select>
+<input type="date" id="emp-vencimento" class="w-full p-2 border rounded text-sm font-bold">
+
+<div class="grid grid-cols-1 gap-2 pt-2">
+<button onclick="lancarEmprestimo()" class="w-full bg-blue-700 text-white p-3 rounded-lg font-black text-xs hover:bg-blue-800 shadow-md uppercase italic">Confirmar e Lançar</button>
+<button onclick="gerarSimulacaoPDF()" class="w-full bg-slate-100 text-slate-600 p-3 rounded-lg font-black text-xs hover:bg-slate-200 border uppercase italic">
+<i class="bi bi-file-pdf"></i> Simular PDF
+</button>
+</div>
+</div>
+</div>
+
+<div class="lg:col-span-3 bg-white rounded-xl border shadow-sm text-[11px]">
+<div class="bg-slate-800 p-4 text-white flex justify-between items-center rounded-t-xl font-bold">
+<div class="flex gap-4">
+<button onclick="setFiltro('todos')" id="btn-f-todos" class="text-blue-400 border-b-2 border-blue-400 pb-1">TODOS</button>
+<button onclick="setFiltro('vencidos')" id="btn-f-vencidos" class="hover:text-red-400">⚠️ VENCIDOS</button>
+</div>
+<button onclick="gerarPDFAtivos()" class="bg-white text-slate-800 px-3 py-1 rounded font-bold text-[10px] hover:bg-gray-200 uppercase">
+Relatório PDF
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-slate-700 text-white uppercase italic font-bold">
+<tr>
+<th class="p-4">Cliente / Histórico</th>
+<th class="p-4">Capital</th>
+<th class="p-4">Devedor</th>
+<th class="p-4 text-green-400">Pago</th>
+<th class="p-4 text-center">Ação</th>
+</tr>
+</thead>
+<tbody id="lista-emprestimos-corpo" class="divide-y font-bold italic"></tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div id="tab-custos" class="tab-content hidden grid grid-cols-1 lg:grid-cols-4 gap-6">
+<div class="bg-white p-6 rounded-xl border shadow-sm h-fit">
+<h2 class="font-bold text-red-600 mb-4 text-xs uppercase border-b pb-2 tracking-widest italic">Lançar Saída</h2>
+<div class="space-y-3">
+<input type="text" id="in-custo-desc" placeholder="DESCRIÇÃO" class="w-full p-2 border rounded text-sm uppercase font-bold outline-none">
+<select id="in-custo-quem" class="w-full p-2 border rounded bg-gray-50 font-bold text-sm">
+<option value="Jacson">Jacson</option>
+<option value="Rafael">Rafael</option>
+</select>
+<input type="date" id="in-custo-data" class="w-full p-2 border rounded text-sm font-bold">
+<input type="number" id="in-custo-valor" placeholder="VALOR R$" class="w-full p-2 border rounded text-sm font-bold outline-none">
+<button onclick="registrarSaida()" class="w-full bg-red-600 text-white p-3 rounded-lg font-black text-sm hover:bg-red-700">CONFIRMAR GASTO</button>
+</div>
+</div>
+<div class="lg:col-span-3 bg-white rounded-xl border shadow-sm overflow-x-auto text-[11px]">
+<table class="w-full text-left font-bold italic">
+<thead class="bg-red-700 text-white uppercase italic">
+<tr><th class="p-4 text-left">Gasto</th><th class="p-4">Data</th><th class="p-4 text-right">Valor</th><th class="p-4">Ação</th></tr>
+</thead>
+<tbody id="lista-saidas-corpo" class="divide-y"></tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+let filtroAtual = 'todos';
+let dados = JSON.parse(localStorage.getItem('vertus_v21_data')) || {
+sistema: 0, caixa: 0, saidas: 0,
+historicoEmprestimos: [], historicoSaidas: []
+};
+
+function salvar() { localStorage.setItem('vertus_v21_data', JSON.stringify(dados)); atualizarDisplays(); }
+function login() { if(document.getElementById('pass').value === "1234") { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); atualizarDisplays(); } }
+function switchTab(tab) { document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden')); document.getElementById('tab-' + tab).classList.remove('hidden'); }
+function format(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+function setFiltro(tipo) {
+filtroAtual = tipo;
+document.getElementById('btn-f-todos').className = tipo === 'todos' ? 'text-blue-400 font-black border-b-2 border-blue-400 pb-1' : 'hover:text-blue-400 transition';
+document.getElementById('btn-f-vencidos').className = tipo === 'vencidos' ? 'text-red-400 font-black border-b-2 border-red-400 pb-1' : 'hover:text-red-400 transition';
+renderEmprestimos();
+}
+
+function atualizarDisplays() {
+document.getElementById('display-saldo-sistema').innerText = format(dados.sistema);
+document.getElementById('display-saldo-caixa').innerText = format(dados.caixa);
+document.getElementById('display-total-saidas').innerText = format(dados.saidas);
+renderSaidas(); renderEmprestimos();
+}
+
+// FUNÇÕES DE PDF
+const { jsPDF } = window.jspdf;
+
+function gerarSimulacaoPDF() {
+const nome = document.getElementById('emp-cliente').value.toUpperCase() || "CLIENTE";
+const valor = parseFloat(document.getElementById('emp-valor').value) || 0;
+const taxa = parseFloat(document.getElementById('emp-juros').value) || 0;
+const venc = document.getElementById('emp-vencimento').value;
+
+if(!valor || !venc) return alert("Preencha Valor e Vencimento para simular!");
+
+const total = valor * (1 + (taxa / 100));
+const doc = new jsPDF();
+
+doc.setFontSize(22); doc.text("VERTUSCREDI", 105, 20, {align: "center"});
+doc.setFontSize(10); doc.text("DEMONSTRATIVO DE PROPOSTA DE CRÉDITO", 105, 28, {align: "center"});
+doc.line(20, 35, 190, 35);
+
+doc.setFontSize(12);
+doc.text(`Cliente: ${nome}`, 20, 50);
+doc.text(`Valor Solicitado: ${format(valor)}`, 20, 60);
+doc.text(`Taxa de Juros: ${taxa}%`, 20, 70);
+doc.setFontSize(14);
+doc.text(`VALOR TOTAL A PAGAR: ${format(total)}`, 20, 85);
+doc.setFontSize(12);
+doc.text(`Data de Vencimento: ${venc.split('-').reverse().join('/')}`, 20, 95);
+
+doc.setFontSize(9);
+doc.text("Esta é uma simulação sujeita a aprovação.", 105, 120, {align: "center"});
+doc.save(`Simulacao_${nome}.pdf`);
+}
+
+function gerarPDFAtivos() {
+const doc = new jsPDF();
+const ativos = dados.historicoEmprestimos.filter(e => (e.total - e.pago) > 0.01);
+doc.setFontSize(18); doc.text("RELAÇÃO DE EMPRÉSTIMOS ATIVOS", 15, 20);
+const rows = ativos.map(e => [e.nome, format(e.valor), format(e.total - e.pago), e.venc.split('-').reverse().join('/'), e.resp]);
+doc.autoTable({ head: [['CLIENTE', 'CAPITAL', 'DÉBITO', 'VENC.', 'RESP']], body: rows, startY: 30, theme: 'grid', headStyles: {fillColor: [30, 41, 59]} });
+doc.save("Relatorio_Ativos.pdf");
+}
+
+// LÓGICA DE GESTÃO (RESTANTE)
+function ajustarSaldoSistema() { let n = prompt("Ajustar Sistema:", dados.sistema); if(n!==null){dados.sistema=parseFloat(n)||0; salvar();} }
+function zerarSaldoSistema() { if(confirm("Zerar Sistema?")) { dados.sistema=0; salvar(); } }
+function editarSaldoCaixa() { let n = prompt("Ajustar Caixa:", dados.caixa); if(n!==null){dados.caixa=parseFloat(n)||0; salvar();} }
+function zerarSaldoCaixa() { if(confirm("Zerar Caixa?")) { dados.caixa=0; salvar(); } }
+function ajustarTotalSaidas() { let n = prompt("Ajustar Saídas:", dados.saidas); if(n!==null){dados.saidas=parseFloat(n)||0; salvar();} }
+function zerarTotalSaidas() { if(confirm("Zerar Saídas?")) { dados.saidas=0; salvar(); } }
+
+function registrarSaida() {
+const desc = document.getElementById('in-custo-desc').value.toUpperCase();
+const quem = document.getElementById('in-custo-quem').value;
+const data = document.getElementById('in-custo-data').value;
+const valor = parseFloat(document.getElementById('in-custo-valor').value);
+if(!desc || !data || isNaN(valor)) return alert("Preencha tudo!");
+dados.historicoSaidas.unshift({ id: Date.now(), desc, quem, data, valor });
+dados.sistema -= valor; dados.caixa -= valor; dados.saidas += valor;
+salvar();
+document.getElementById('in-custo-desc').value = ""; document.getElementById('in-custo-valor').value = "";
+}
+
+function renderSaidas() {
+const corpo = document.getElementById('lista-saidas-corpo');
+corpo.innerHTML = "";
+dados.historicoSaidas.forEach(item => {
+corpo.innerHTML += `<tr class="border-b"><td class="p-4 font-bold">${item.desc} (${item.quem})</td><td class="p-4">${item.data.split('-').reverse().join('/')}</td><td class="p-4 text-right text-red-600">-${format(item.valor)}</td><td class="p-4 text-center"><button onclick="excluirGasto(${item.id})" class="text-gray-300 hover:text-red-500"><i class="bi bi-trash"></i></button></td></tr>`;
+});
+}
+
+function excluirGasto(id) {
+const i = dados.historicoSaidas.find(x => x.id === id);
+dados.sistema += i.valor; dados.caixa += i.valor; dados.saidas -= i.valor;
+dados.historicoSaidas = dados.historicoSaidas.filter(x => x.id !== id);
+salvar();
+}
+
+function lancarEmprestimo() {
+const nome = document.getElementById('emp-cliente').value.toUpperCase();
+const valor = parseFloat(document.getElementById('emp-valor').value);
+const taxa = parseFloat(document.getElementById('emp-juros').value) || 0;
+const venc = document.getElementById('emp-vencimento').value;
+const resp = document.getElementById('emp-criado').value;
+if(!nome || isNaN(valor) || !venc) return alert("Preencha tudo!");
+const total = valor * (1 + (taxa / 100));
+const dataHoje = new Date().toLocaleDateString('pt-BR');
+dados.historicoEmprestimos.unshift({ id: Date.now(), nome, valor, total, pago: 0, venc, resp, dataAcao: dataHoje, renovado: false, taxaOriginal: taxa, logs: [`Contratado em ${dataHoje}`] });
+dados.sistema -= valor; dados.caixa -= valor;
+salvar();
+document.getElementById('emp-cliente').value = ""; document.getElementById('emp-valor').value = "";
+}
+
+function renderEmprestimos() {
+const corpo = document.getElementById('lista-emprestimos-corpo');
+corpo.innerHTML = "";
+const hoje = new Date().toISOString().split('T')[0];
+let list = dados.historicoEmprestimos;
+if(filtroAtual === 'vencidos') list = list.filter(e => hoje > e.venc && (e.total - e.pago) > 0.01);
+list.forEach(e => {
+const devedor = e.total - e.pago;
+const quitado = devedor <= 0.01;
+const estaVencido = (hoje > e.venc && !quitado);
+const logsHTML = (e.logs || []).map(log => `<div class="text-[8px] text-gray-400 mb-0.5">• ${log}</div>`).join('');
+corpo.innerHTML += `<tr class="border-b ${quitado ? 'bg-green-50' : 'hover:bg-slate-50'}">
+<td class="p-4 uppercase">
+<div class="font-black ${quitado ? 'text-gray-400 line-through' : 'text-slate-700'}">${e.nome} <span class="text-blue-500 text-[9px]">(${e.resp})</span></div>
+<div class="mt-1">${logsHTML}</div>
+</td>
+<td class="p-4 text-gray-400">${format(e.valor)}</td>
+<td class="p-4 ${estaVencido ? 'text-red-600 animate-pulse' : (quitado ? 'text-gray-300' : 'text-slate-900')}">
+${format(devedor)}<br><span class="text-[9px] text-gray-400">Venc: ${e.venc.split('-').reverse().join('/')}</span>
+</td>
+<td class="p-4 text-green-600 font-black">${format(e.pago)}</td>
+<td class="p-4 text-center">
+<div class="flex gap-2 justify-center items-center">
+${!quitado ? `<button onclick="baixaPagamento(${e.id})" class="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold uppercase">Pagar</button>
+<button onclick="cobrarZap(${e.id})" class="bg-green-500 text-white px-2 py-1 rounded"><i class="bi bi-whatsapp"></i></button>` : `<i class="bi bi-check2-all text-green-600 text-lg"></i>`}
+<button onclick="excluirEmp(${e.id})" class="text-gray-200 hover:text-red-500 ml-2"><i class="bi bi-trash"></i></button>
+</div>
+</td>
+</tr>`;
+});
+}
+
+function baixaPagamento(id) {
+const e = dados.historicoEmprestimos.find(x => x.id === id);
+const devedorAntes = e.total - e.pago;
+if (devedorAntes <= 0.01) return;
+const v = parseFloat(prompt(`PAGAMENTO: ${e.nome}\nSaldo Devedor: ${format(devedorAntes)}`));
+if (!isNaN(v) && v > 0) {
+const dataHoje = new Date().toLocaleDateString('pt-BR');
+e.pago += v; dados.sistema += v; dados.caixa += v;
+e.logs.push(`Recebido ${format(v)} em ${dataHoje}`);
+const novoSaldo = e.total - e.pago;
+if (novoSaldo > 0.01) {
+const acao = prompt(`RESTANTE: ${format(novoSaldo)}\n\n1 - RENOVAR (Recalcular juros)\n2 - ACRÉSCIMO\n\nDigite 1 ou 2:`);
+if (acao === "1") {
+const novaTaxa = parseFloat(prompt("Taxa (%) renovação:", e.taxaOriginal)) || 0;
+const dias = parseInt(prompt("Dias?", "30")) || 30;
+const baseRenovacao = novoSaldo;
+const novoTotal = baseRenovacao * (1 + (novaTaxa / 100));
+let d = new Date(e.venc); d.setDate(d.getDate() + dias);
+e.valor = baseRenovacao; e.total = novoTotal; e.pago = 0;
+e.venc = d.toISOString().split('T')[0];
+e.renovado = true; e.dataAcao = dataHoje; e.taxaOriginal = novaTaxa;
+e.logs.push(`RENOVADO: Base ${format(baseRenovacao)} + ${novaTaxa}%`);
+} else if (acao === "2") {
+const juro = parseFloat(prompt("Acréscimo (R$):", "0.00"));
+if (!isNaN(juro) && juro > 0) { e.total += juro; e.logs.push(`Acréscimo de ${format(juro)}`); }
+}
+}
+salvar();
+}
+}
+
+function cobrarZap(id) {
+const e = dados.historicoEmprestimos.find(x => x.id === id);
+const devedor = e.total - e.pago;
+const rotuloData = e.renovado ? "🔄 Renovado em" : "📅 Contratação";
+const msg = `*VERTUSCREDI - INFORMATIVO*%0A%0AOlá *${e.nome}*, resumo da sua conta:%0A%0A💰 Valor Original: ${format(e.valor)}%0A✅ Total Pago: ${format(e.pago)}%0A⚠️ *SALDO DEVEDOR:* *${format(devedor)}*%0A${rotuloData}: ${e.dataAcao}%0A📅 Vencimento: ${e.venc.split('-').reverse().join('/')}%0A%0A_Ficamos à disposição._`;
+window.open(`https://wa.me/?text=${msg}`, '_blank');
+}
+
+function excluirEmp(id) { if(confirm("Apagar registro?")) { dados.historicoEmprestimos = dados.historicoEmprestimos.filter(x => x.id !== id); salvar(); } }
+atualizarDisplays();
+</script>
+</body>
+</html>
