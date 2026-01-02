@@ -30,7 +30,6 @@
 </div>
 </div>
 <div class="flex items-center gap-4">
-<span id="sync-status" class="text-[10px] text-gray-400 uppercase font-bold">Sincronizado</span>
 <button onclick="location.reload()" class="text-red-500 font-bold text-[10px] bg-red-50 px-3 py-1 rounded">SAIR</button>
 </div>
 </nav>
@@ -160,46 +159,48 @@ let dados = {
     historicoEmprestimos: [], historicoSaidas: []
 };
 
-async function carregarDados() {
-    const statusEl = document.getElementById('sync-status');
-    statusEl.innerText = "Sincronizando...";
-    statusEl.className = "text-[10px] text-blue-500 uppercase font-bold animate-pulse";
-
-    const { data, error } = await _supabase.from('lancamentos').select('*').eq('tipo', 'ESTADO_GERAL').single();
-    
-    if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao carregar dados:', error);
-    } else if (data) {
-        dados = JSON.parse(data.descricao);
+// Carrega do LocalStorage primeiro para rapidez, depois sincroniza com Supabase
+function carregarLocal() {
+    const local = localStorage.getItem('vertus_dados');
+    if (local) {
+        dados = JSON.parse(local);
+        atualizarDisplays();
     }
-    
-    atualizarDisplays();
-    statusEl.innerText = "Sincronizado";
-    statusEl.className = "text-[10px] text-green-500 uppercase font-bold";
+}
+
+async function carregarDados() {
+    try {
+        const { data, error } = await _supabase.from('lancamentos').select('*').eq('tipo', 'ESTADO_GERAL').single();
+        if (data) {
+            const dadosNuvem = JSON.parse(data.descricao);
+            // Só atualiza se os dados da nuvem forem diferentes (evita piscar a tela)
+            if (JSON.stringify(dadosNuvem) !== JSON.stringify(dados)) {
+                dados = dadosNuvem;
+                localStorage.setItem('vertus_dados', JSON.stringify(dados));
+                atualizarDisplays();
+            }
+        }
+    } catch (e) {
+        console.error("Erro na sincronização:", e);
+    }
 }
 
 async function salvar() {
-    const statusEl = document.getElementById('sync-status');
-    statusEl.innerText = "Salvando...";
-    statusEl.className = "text-[10px] text-orange-500 uppercase font-bold animate-pulse";
-
+    // Salva no LocalStorage imediatamente (garante que não perca ao fechar)
+    localStorage.setItem('vertus_dados', JSON.stringify(dados));
     atualizarDisplays();
     
-    const { error } = await _supabase.from('lancamentos').upsert({
-        id: '00000000-0000-0000-0000-000000000001',
-        tipo: 'ESTADO_GERAL',
-        descricao: JSON.stringify(dados),
-        data: new Date().toISOString(),
-        valor: 0
-    });
-
-    if (error) {
-        console.error('Erro ao salvar no Supabase:', error);
-        statusEl.innerText = "Erro ao Salvar";
-        statusEl.className = "text-[10px] text-red-500 uppercase font-bold";
-    } else {
-        statusEl.innerText = "Sincronizado";
-        statusEl.className = "text-[10px] text-green-500 uppercase font-bold";
+    // Tenta salvar na nuvem em segundo plano
+    try {
+        await _supabase.from('lancamentos').upsert({
+            id: '00000000-0000-0000-0000-000000000001',
+            tipo: 'ESTADO_GERAL',
+            descricao: JSON.stringify(dados),
+            data: new Date().toISOString(),
+            valor: 0
+        });
+    } catch (e) {
+        console.error("Erro ao salvar na nuvem:", e);
     }
 }
 
@@ -207,9 +208,10 @@ function login() {
     if(document.getElementById('pass').value === "13579") { 
         document.getElementById('login-screen').classList.add('hidden'); 
         document.getElementById('admin-panel').classList.remove('hidden'); 
+        carregarLocal();
         carregarDados(); 
-        // Sincronização automática a cada 30 segundos
-        setInterval(carregarDados, 30000);
+        // Sincronização silenciosa a cada 10 segundos
+        setInterval(carregarDados, 10000);
     } else {
         alert("Senha incorreta!");
     }
@@ -246,23 +248,19 @@ function gerarSimulacaoPDF() {
     const valor = parseFloat(document.getElementById('emp-valor').value) || 0;
     const taxa = parseFloat(document.getElementById('emp-juros').value) || 0;
     const venc = document.getElementById('emp-vencimento').value;
-    
     if(!valor || !venc) return alert("Preencha Valor e Vencimento para simular!");
     
     const total = valor * (1 + (taxa / 100));
     const doc = new jsPDF();
-    
     doc.setFontSize(22); doc.text("VERTUSCREDI", 105, 20, {align: "center"});
     doc.setFontSize(10); doc.text("DEMONSTRATIVO DE PROPOSTA DE CRÉDITO", 105, 28, {align: "center"});
     doc.line(20, 35, 190, 35);
-    
     doc.setFontSize(12);
     doc.text(`Cliente: ${nome}`, 20, 50);
     doc.setFontSize(14);
     doc.text(`VALOR TOTAL A PAGAR: ${format(total)}`, 20, 85);
     doc.setFontSize(12);
     doc.text(`Data de Vencimento: ${venc.split('-').reverse().join('/')}`, 20, 95);
-    
     doc.setFontSize(9);
     doc.text("Esta é uma simulação sujeita a aprovação.", 105, 120, {align: "center"});
     doc.save(`Simulacao_${nome}.pdf`);
@@ -400,7 +398,7 @@ function cobrarZap(id) {
 function excluirEmp(id) { if(confirm("Apagar registro?")) { dados.historicoEmprestimos = dados.historicoEmprestimos.filter(x => x.id !== id); salvar(); } }
 
 // Inicialização
-atualizarDisplays();
+carregarLocal();
 </script>
 </body>
 </html>
