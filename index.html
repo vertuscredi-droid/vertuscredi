@@ -36,7 +36,7 @@
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-center font-bold">
 <div class="bg-blue-800 p-5 rounded-xl text-white shadow-lg">
-<div class="flex justify-between items-center mb-1 text-[10px] uppercase opacity-70 italic italic">
+<div class="flex justify-between items-center mb-1 text-[10px] uppercase opacity-70 italic">
 <span>Saldo Geral Sistema</span>
 <div class="flex gap-1">
 <button onclick="ajustarSaldoSistema()" class="bg-blue-600 px-1 rounded">Ajustar</button>
@@ -158,16 +158,13 @@ let dados = {
 };
 
 async function carregarDados() {
-    const { data, error } = await _supabase.from('lancamentos').select('*').order('created_at', { ascending: false });
-    if (error) {
+    const { data, error } = await _supabase.from('lancamentos').select('*').eq('tipo', 'ESTADO_GERAL').single();
+    if (error && error.code !== 'PGRST116') {
         console.error('Erro ao carregar dados:', error);
         const local = localStorage.getItem('vertus_v21_data');
         if (local) dados = JSON.parse(local);
-    } else if (data && data.length > 0) {
-        const estado = data.find(r => r.tipo === 'ESTADO_GERAL');
-        if (estado) {
-            dados = JSON.parse(estado.descricao);
-        }
+    } else if (data) {
+        dados = JSON.parse(data.descricao);
     }
     atualizarDisplays();
 }
@@ -196,8 +193,14 @@ function login() {
     }
 }
 
-function switchTab(tab) { document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden')); document.getElementById('tab-' + tab).classList.remove('hidden'); }
-function format(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function switchTab(tab) { 
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden')); 
+    document.getElementById('tab-' + tab).classList.remove('hidden'); 
+}
+
+function format(v) { 
+    return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); 
+}
 
 function setFiltro(tipo) {
     filtroAtual = tipo;
@@ -207,10 +210,11 @@ function setFiltro(tipo) {
 }
 
 function atualizarDisplays() {
-    document.getElementById('display-saldo-sistema').innerText = format(dados.sistema || 0);
-    document.getElementById('display-saldo-caixa').innerText = format(dados.caixa || 0);
-    document.getElementById('display-total-saidas').innerText = format(dados.saidas || 0);
-    renderSaidas(); renderEmprestimos();
+    document.getElementById('display-saldo-sistema').innerText = format(dados.sistema);
+    document.getElementById('display-saldo-caixa').innerText = format(dados.caixa);
+    document.getElementById('display-total-saidas').innerText = format(dados.saidas);
+    renderSaidas(); 
+    renderEmprestimos();
 }
 
 const { jsPDF } = window.jspdf;
@@ -232,8 +236,6 @@ function gerarSimulacaoPDF() {
     
     doc.setFontSize(12);
     doc.text(`Cliente: ${nome}`, 20, 50);
-    doc.text(`Valor Solicitado: ${format(valor)}`, 20, 60);
-    doc.text(`Taxa de Juros: ${taxa}%`, 20, 70);
     doc.setFontSize(14);
     doc.text(`VALOR TOTAL A PAGAR: ${format(total)}`, 20, 85);
     doc.setFontSize(12);
@@ -376,6 +378,7 @@ function cobrarZap(id) {
 
 function excluirEmp(id) { if(confirm("Apagar registro?")) { dados.historicoEmprestimos = dados.historicoEmprestimos.filter(x => x.id !== id); salvar(); } }
 
+// Inicialização
 atualizarDisplays();
 </script>
 </body>
