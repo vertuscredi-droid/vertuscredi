@@ -159,7 +159,7 @@ let dados = {
     historicoEmprestimos: [], historicoSaidas: []
 };
 
-// Carrega do LocalStorage primeiro para rapidez, depois sincroniza com Supabase
+// Carrega do LocalStorage primeiro para rapidez
 function carregarLocal() {
     const local = localStorage.getItem('vertus_dados');
     if (local) {
@@ -173,12 +173,10 @@ async function carregarDados() {
         const { data, error } = await _supabase.from('lancamentos').select('*').eq('tipo', 'ESTADO_GERAL').single();
         if (data) {
             const dadosNuvem = JSON.parse(data.descricao);
-            // Só atualiza se os dados da nuvem forem diferentes (evita piscar a tela)
-            if (JSON.stringify(dadosNuvem) !== JSON.stringify(dados)) {
-                dados = dadosNuvem;
-                localStorage.setItem('vertus_dados', JSON.stringify(dados));
-                atualizarDisplays();
-            }
+            // Atualiza os dados locais com os da nuvem
+            dados = dadosNuvem;
+            localStorage.setItem('vertus_dados', JSON.stringify(dados));
+            atualizarDisplays();
         }
     } catch (e) {
         console.error("Erro na sincronização:", e);
@@ -186,11 +184,11 @@ async function carregarDados() {
 }
 
 async function salvar() {
-    // Salva no LocalStorage imediatamente (garante que não perca ao fechar)
+    // Salva no LocalStorage imediatamente
     localStorage.setItem('vertus_dados', JSON.stringify(dados));
     atualizarDisplays();
     
-    // Tenta salvar na nuvem em segundo plano
+    // Tenta salvar na nuvem
     try {
         await _supabase.from('lancamentos').upsert({
             id: '00000000-0000-0000-0000-000000000001',
@@ -204,13 +202,18 @@ async function salvar() {
     }
 }
 
-function login() { 
+async function login() { 
     if(document.getElementById('pass').value === "13579") { 
         document.getElementById('login-screen').classList.add('hidden'); 
         document.getElementById('admin-panel').classList.remove('hidden'); 
+        
+        // 1. Carrega o que tiver no aparelho (rápido)
         carregarLocal();
-        carregarDados(); 
-        // Sincronização silenciosa a cada 10 segundos
+        
+        // 2. Busca IMEDIATAMENTE os dados da nuvem (essencial para novos aparelhos)
+        await carregarDados(); 
+        
+        // 3. Sincronização silenciosa a cada 10 segundos
         setInterval(carregarDados, 10000);
     } else {
         alert("Senha incorreta!");
@@ -397,8 +400,6 @@ function cobrarZap(id) {
 
 function excluirEmp(id) { if(confirm("Apagar registro?")) { dados.historicoEmprestimos = dados.historicoEmprestimos.filter(x => x.id !== id); salvar(); } }
 
-// Inicialização
-carregarLocal();
 </script>
 </body>
 </html>
