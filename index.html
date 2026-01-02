@@ -29,7 +29,10 @@
 <button onclick="switchTab('custos')" class="hover:text-blue-700 transition">Custos / Saídas</button>
 </div>
 </div>
+<div class="flex items-center gap-4">
+<span id="sync-status" class="text-[10px] text-gray-400 uppercase font-bold">Sincronizado</span>
 <button onclick="location.reload()" class="text-red-500 font-bold text-[10px] bg-red-50 px-3 py-1 rounded">SAIR</button>
+</div>
 </nav>
 
 <div class="p-6 max-w-7xl mx-auto">
@@ -158,19 +161,28 @@ let dados = {
 };
 
 async function carregarDados() {
+    const statusEl = document.getElementById('sync-status');
+    statusEl.innerText = "Sincronizando...";
+    statusEl.className = "text-[10px] text-blue-500 uppercase font-bold animate-pulse";
+
     const { data, error } = await _supabase.from('lancamentos').select('*').eq('tipo', 'ESTADO_GERAL').single();
+    
     if (error && error.code !== 'PGRST116') {
         console.error('Erro ao carregar dados:', error);
-        const local = localStorage.getItem('vertus_v21_data');
-        if (local) dados = JSON.parse(local);
     } else if (data) {
         dados = JSON.parse(data.descricao);
     }
+    
     atualizarDisplays();
+    statusEl.innerText = "Sincronizado";
+    statusEl.className = "text-[10px] text-green-500 uppercase font-bold";
 }
 
 async function salvar() {
-    localStorage.setItem('vertus_v21_data', JSON.stringify(dados));
+    const statusEl = document.getElementById('sync-status');
+    statusEl.innerText = "Salvando...";
+    statusEl.className = "text-[10px] text-orange-500 uppercase font-bold animate-pulse";
+
     atualizarDisplays();
     
     const { error } = await _supabase.from('lancamentos').upsert({
@@ -180,7 +192,15 @@ async function salvar() {
         data: new Date().toISOString(),
         valor: 0
     });
-    if (error) console.error('Erro ao salvar no Supabase:', error);
+
+    if (error) {
+        console.error('Erro ao salvar no Supabase:', error);
+        statusEl.innerText = "Erro ao Salvar";
+        statusEl.className = "text-[10px] text-red-500 uppercase font-bold";
+    } else {
+        statusEl.innerText = "Sincronizado";
+        statusEl.className = "text-[10px] text-green-500 uppercase font-bold";
+    }
 }
 
 function login() { 
@@ -188,6 +208,8 @@ function login() {
         document.getElementById('login-screen').classList.add('hidden'); 
         document.getElementById('admin-panel').classList.remove('hidden'); 
         carregarDados(); 
+        // Sincronização automática a cada 30 segundos
+        setInterval(carregarDados, 30000);
     } else {
         alert("Senha incorreta!");
     }
@@ -249,7 +271,6 @@ function gerarSimulacaoPDF() {
 function gerarPDFAtivos() {
     const doc = new jsPDF();
     const ativos = (dados.historicoEmprestimos || []).filter(e => (e.total - e.pago) > 0.01);
-    doc.setFontSize(18); doc.text("RELAÇÃO DE EMPRÉSTIMOS ATIVOS", 15, 20);
     const rows = ativos.map(e => [e.nome, format(e.valor), format(e.total - e.pago), e.venc.split('-').reverse().join('/'), e.resp]);
     doc.autoTable({ head: [['CLIENTE', 'CAPITAL', 'DÉBITO', 'VENC.', 'RESP']], body: rows, startY: 30, theme: 'grid', headStyles: {fillColor: [30, 41, 59]} });
     doc.save("Relatorio_Ativos.pdf");
